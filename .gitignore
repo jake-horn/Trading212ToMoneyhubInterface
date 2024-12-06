@@ -396,3 +396,8 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+<<<<<<< HEAD
+=======
+
+Trading212ToMoneyhubInterface/appsettings.json
+>>>>>>> 8826c89 (Initial commit)
