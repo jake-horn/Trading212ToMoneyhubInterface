@@ -27,27 +27,45 @@ namespace Trading212ToMoneyhubInterface.Services
             // Arrange the browser and tab
             var browserFetcher = new BrowserFetcher();
             await browserFetcher.DownloadAsync();
-            await using var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true });
+            await using var browser = await Puppeteer.LaunchAsync(new LaunchOptions 
+            {
+                Headless = false, 
+                Args = new[] { "--disable-blink-features=AutomationControlled" }
+            });
+
             await using var page = await browser.NewPageAsync();
-            _logger.LogInformation("Opened browser."); 
+            _logger.LogInformation("Opened browser.");
+            await page.SetUserAgentAsync("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
 
             // Go to MoneyHub and log in
-            await page.GoToAsync($"https://client.moneyhub.co.uk/#accounts/details/{trading212Key}");
+            await page.GoToAsync($"https://client.moneyhub.co.uk/#accounts/details/{trading212Key}", new NavigationOptions
+            {
+                WaitUntil = new[] { WaitUntilNavigation.Networkidle2 }
+            });
+
+            await page.WaitForSelectorAsync("#app-container");
+
             await page.TypeAsync("#email", _configuration.GetSection("MoneyHub:Username").Value);
             await page.TypeAsync("#password", _configuration.GetSection("MoneyHub:Password").Value);
             _logger.LogInformation("Logged in.");
 
+            var waitForSelectorOptions = new WaitForSelectorOptions
+            {
+                Visible = true, 
+                Timeout = 10000
+            }; 
+
             // Click to update
             await page.ClickAsync(".sc-bxivhb.sc-ifAKCX.byYfdZ");
-            await page.WaitForSelectorAsync("button[aria-label='Edit Account']");
+            await page.WaitForSelectorAsync("button[aria-label='Edit Account']", waitForSelectorOptions);
 
             // Click to edit the account manually
             await page.ClickAsync("button[aria-label='Edit Account']");
-            await page.WaitForSelectorAsync("button[class='sc-EHOje dtpHoS'] span[class='sc-bxivhb sc-ifAKCX byYfdZ']");
+            await page.WaitForSelectorAsync("button[class='sc-EHOje dtpHoS'] span[class='sc-bxivhb sc-ifAKCX byYfdZ']", waitForSelectorOptions);
 
             // Click to edit the balance
             await page.ClickAsync("button[class='sc-EHOje dtpHoS'] span[class='sc-bxivhb sc-ifAKCX byYfdZ']");
-            await page.WaitForSelectorAsync("#balance");
+            await page.WaitForSelectorAsync("#balance", waitForSelectorOptions);
 
             // Get the balance value and delete each character
             var balanceValue = await page.EvaluateExpressionAsync<string>("document.querySelector('#balance').value");
